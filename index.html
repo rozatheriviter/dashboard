@@ -16,7 +16,7 @@
 
         body {
             margin: 0;
-            padding: 40px;
+            padding: 24px;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)),
                         url('https://images.unsplash.com/photo-1544198365-f5d60b6d8190?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed;
@@ -48,10 +48,10 @@
 
         /* --- Layout --- */
         .grid-container {
-            max-width: 1400px;
+            max-width: 1280px;
             width: 100%;
             display: grid;
-            grid-template-columns: 340px 1fr;
+            grid-template-columns: 280px 1fr;
             grid-template-rows: auto 1fr;
             gap: 24px;
             z-index: 1;
@@ -155,10 +155,23 @@
 
         .task-list { list-style: none; padding: 0; margin: 0; max-height: 400px; overflow-y: auto; }
         .task-item { 
-            display: flex; align-items: center; padding: 12px 0; 
+            display: flex; align-items: center; padding: 12px 8px;
             border-bottom: 1px solid rgba(255,255,255,0.05); transition: opacity 0.2s;
+            border-left: 3px solid transparent;
         }
-        .task-text { flex-grow: 1; margin-left: 12px; font-size: 0.95rem; cursor: pointer; }
+        .task-item.priority-1 { border-left-color: var(--danger); background: rgba(255, 69, 58, 0.05); }
+        .task-item.priority-2 { border-left-color: #ff9f0a; background: rgba(255, 159, 10, 0.05); }
+        .task-item.priority-3 { border-left-color: var(--accent); background: rgba(63, 172, 255, 0.05); }
+
+        .priority-badge {
+            width: 14px; height: 14px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 0.6rem; font-weight: 900; color: black; margin-right: 8px; flex-shrink: 0;
+        }
+        .priority-badge.p1 { background: var(--danger); }
+        .priority-badge.p2 { background: #ff9f0a; }
+        .priority-badge.p3 { background: var(--accent); }
+
+        .task-text { flex-grow: 1; font-size: 0.95rem; cursor: pointer; }
         .task-done .task-text { text-decoration: line-through; opacity: 0.5; color: #888; }
         .delete-btn { background: none; border: none; color: #666; cursor: pointer; font-size: 1.2rem; padding: 0 10px; }
         .delete-btn:hover { color: var(--danger); }
@@ -182,7 +195,7 @@
 
         .links-area {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 20px;
             min-height: 100px;
         }
@@ -328,12 +341,20 @@
                 </div>
 
                 <div class="layout-controls">
-                    <button class="action-btn btn-save-layout" onclick="saveAsDefault()">
-                        💾 Save Default
+                    <button class="action-btn btn-save-layout" onclick="saveAsDefault()" title="Save current layout as your browser's default">
+                        💾 Save
                     </button>
-                    <button class="action-btn btn-reset-layout" onclick="resetToDefault()">
+                    <button class="action-btn btn-reset-layout" onclick="resetToDefault()" title="Reset to your saved default layout">
                         🔄 Reset
                     </button>
+                    <span style="opacity:0.3; margin:0 5px;">|</span>
+                    <button class="action-btn" onclick="exportConfig()" title="Export configuration to a file">
+                        📤 Export
+                    </button>
+                    <button class="action-btn" onclick="document.getElementById('importFile').click()" title="Import configuration from a file">
+                        📥 Import
+                    </button>
+                    <input type="file" id="importFile" style="display:none" onchange="importConfig(event)">
                     <span style="opacity:0.3; margin:0 5px;">|</span>
                 </div>
 
@@ -343,16 +364,8 @@
             </div>
         </div>
 
-        <div class="sidebar">
-            <div class="glass-panel">
-                <div class="tool-title">Quick Notes</div>
-                <textarea id="scratchpad" placeholder="Client updates, call logs..." oninput="saveNotes()"></textarea>
-            </div>
-            <div class="glass-panel" style="flex-grow: 1;">
-                <div class="tool-title">Priority Tasks</div>
-                <input type="text" id="taskInput" class="task-input" placeholder="+ Add task (Enter)" onkeypress="handleTaskKey(event)">
-                <ul id="taskList" class="task-list"></ul>
-            </div>
+        <div class="sidebar" id="sidebar">
+            <!-- Widgets rendered here -->
         </div>
 
         <div class="main-content" id="mainContent">
@@ -415,6 +428,35 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="widgetModal">
+        <div class="modal">
+            <h2>Add New Widget</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <button class="action-btn" onclick="addWidget('notes')" style="flex-direction: column; height: 100px; gap: 4px;">
+                    <span style="font-size: 1.5rem;">📝</span><span>Notes</span>
+                </button>
+                <button class="action-btn" onclick="addWidget('tasks')" style="flex-direction: column; height: 100px; gap: 4px;">
+                    <span style="font-size: 1.5rem;">✅</span><span>Tasks</span>
+                </button>
+                <button class="action-btn" onclick="addWidget('clock')" style="flex-direction: column; height: 100px; gap: 4px;">
+                    <span style="font-size: 1.5rem;">🕒</span><span>Clock</span>
+                </button>
+                <button class="action-btn" onclick="addWidget('timer')" style="flex-direction: column; height: 100px; gap: 4px;">
+                    <span style="font-size: 1.5rem;">⏳</span><span>Timer</span>
+                </button>
+                <button class="action-btn" onclick="addWidget('goal')" style="flex-direction: column; height: 100px; gap: 4px;">
+                    <span style="font-size: 1.5rem;">🎯</span><span>Goal</span>
+                </button>
+                <button class="action-btn" onclick="addWidget('quote')" style="flex-direction: column; height: 100px; gap: 4px;">
+                    <span style="font-size: 1.5rem;">💡</span><span>Quote</span>
+                </button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="closeModal('widgetModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Data & Initialization ---
         const defaultData = [
@@ -456,24 +498,34 @@
         ];
 
         // Load live data OR default data
-        let appData = JSON.parse(localStorage.getItem('roza_app_data')) || JSON.parse(JSON.stringify(defaultData));
+        let rawData = JSON.parse(localStorage.getItem('roza_app_data')) || JSON.parse(JSON.stringify(defaultData));
+
+        // Data structure migration & normalization
+        let appData = {
+            sections: Array.isArray(rawData) ? rawData : (rawData.sections || []),
+            widgets: rawData.widgets || [
+                { id: 'w-notes', type: 'notes', title: 'Quick Notes' },
+                { id: 'w-tasks', type: 'tasks', title: 'Priority Tasks' }
+            ]
+        };
         
         let isEditing = false;
         let currentEditCatIdx = -1;
         let currentEditLinkIdx = -1;
 
         // Ensure IDs exist
-        appData.forEach((cat, i) => {
+        appData.sections.forEach((cat, i) => {
             if(!cat.id) cat.id = `cat-${i}-${Date.now()}`;
             cat.links.forEach((l, k) => { if(!l.id) l.id = `link-${i}-${k}-${Date.now()}`; });
         });
 
         // --- Core Render Logic ---
         function renderApp() {
+            renderWidgets();
             const container = document.getElementById('mainContent');
             container.innerHTML = '';
 
-            appData.forEach((section, sIdx) => {
+            appData.sections.forEach((section, sIdx) => {
                 const secEl = document.createElement('div');
                 secEl.className = 'category-container';
                 secEl.dataset.id = section.id;
@@ -534,6 +586,126 @@
             initSortable();
         }
 
+        // --- Widget Rendering ---
+        function renderWidgets() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.innerHTML = '';
+
+            appData.widgets.forEach((widget, wIdx) => {
+                const widgetEl = document.createElement('div');
+                widgetEl.className = 'glass-panel';
+                widgetEl.dataset.id = widget.id;
+
+                let contentHtml = '';
+                if (widget.type === 'notes') {
+                    contentHtml = `<textarea id="scratchpad" placeholder="Client updates, call logs..." oninput="saveNotes()">${localStorage.getItem('roza_notes') || ''}</textarea>`;
+                } else if (widget.type === 'tasks') {
+                    contentHtml = `
+                        <input type="text" id="taskInput" class="task-input" placeholder="+ Add task (Enter)" onkeypress="handleTaskKey(event)">
+                        <ul id="taskList" class="task-list">${localStorage.getItem('roza_tasks') || ''}</ul>
+                    `;
+                } else if (widget.type === 'clock') {
+                    contentHtml = `<div id="widget-clock" style="font-size: 2.2rem; font-weight: 700; text-align: center; margin: 10px 0; color: var(--accent);">--:--:--</div>`;
+                } else if (widget.type === 'timer') {
+                    contentHtml = `
+                        <div style="text-align: center;">
+                            <div id="timer-display" style="font-size: 2.5rem; font-weight: 700;">25:00</div>
+                            <div style="display: flex; gap: 8px; justify-content: center; margin-top: 10px;">
+                                <button class="action-btn" onclick="toggleTimer(this)" style="padding: 6px 16px; font-size: 0.8rem;">Start</button>
+                                <button class="action-btn" onclick="resetTimer()" style="padding: 6px 16px; font-size: 0.8rem;">Reset</button>
+                            </div>
+                        </div>
+                    `;
+                } else if (widget.type === 'goal') {
+                    contentHtml = `<textarea id="dailyGoal" placeholder="What is your main focus today?" oninput="saveGoal()" style="height: 80px; font-size: 1rem; border-color: rgba(63, 172, 255, 0.3);">${localStorage.getItem('roza_goal') || ''}</textarea>`;
+                } else if (widget.type === 'quote') {
+                    const quote = quotes[Math.floor(Math.random() * quotes.length)];
+                    contentHtml = `<div style="font-style: italic; font-size: 0.95rem; color: rgba(255,255,255,0.85); line-height: 1.5; padding: 10px 5px; text-align: center;">"${quote}"</div>`;
+                }
+
+                widgetEl.innerHTML = `
+                    <div class="section-header" style="margin-bottom:12px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--accent); font-weight: 800;">
+                        <span>${widget.title}</span>
+                        ${isEditing ? `<button class="btn-icon" style="color:#ff453a; font-size:0.8rem" onclick="deleteWidget(${wIdx})">🗑️</button>` : ''}
+                    </div>
+                    ${contentHtml}
+                `;
+                sidebar.appendChild(widgetEl);
+            });
+
+            if (isEditing) {
+                const addWidgetBtn = document.createElement('button');
+                addWidgetBtn.className = 'action-btn';
+                addWidgetBtn.style.width = '100%';
+                addWidgetBtn.style.justifyContent = 'center';
+                addWidgetBtn.style.borderStyle = 'dashed';
+                addWidgetBtn.style.background = 'transparent';
+                addWidgetBtn.innerHTML = '+ Add Widget';
+                addWidgetBtn.onclick = () => openWidgetModal();
+                sidebar.appendChild(addWidgetBtn);
+            }
+
+            initWidgetSortable();
+        }
+
+        function initWidgetSortable() {
+            const sidebar = document.getElementById('sidebar');
+            new Sortable(sidebar, {
+                animation: 250,
+                disabled: !isEditing,
+                ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    const item = appData.widgets.splice(evt.oldIndex, 1)[0];
+                    appData.widgets.splice(evt.newIndex, 0, item);
+                    saveData();
+                }
+            });
+        }
+
+        function deleteWidget(idx) {
+            if(!confirm("Remove this widget?")) return;
+            appData.widgets.splice(idx, 1);
+            saveData();
+            renderApp();
+        }
+
+        function openWidgetModal() {
+            document.getElementById('widgetModal').style.display = 'flex';
+        }
+
+        const quotes = [
+            "Believe you can and you're halfway there.",
+            "Your only limit is your mind.",
+            "Focus on being productive instead of busy.",
+            "The secret of getting ahead is getting started.",
+            "Don't stop until you're proud.",
+            "Small steps lead to big results.",
+            "Make today amazing.",
+            "Strive for progress, not perfection."
+        ];
+
+        function addWidget(type) {
+            const titles = {
+                notes: 'Quick Notes',
+                tasks: 'Priority Tasks',
+                clock: 'Digital Clock',
+                timer: 'Focus Timer',
+                goal: 'Today\'s Goal',
+                quote: 'Daily Inspiration'
+            };
+
+            appData.widgets.push({
+                id: `w-${type}-${Date.now()}`,
+                type: type,
+                title: titles[type] || 'New Widget'
+            });
+
+            saveData();
+            closeModal('widgetModal');
+            renderApp();
+            showToast(`Added ${titles[type]}`);
+        }
+
         // --- Drag & Drop ---
         function initSortable() {
             const mainContainer = document.getElementById('mainContent');
@@ -545,8 +717,8 @@
                 disabled: !isEditing,
                 ghostClass: 'sortable-ghost',
                 onEnd: function (evt) {
-                    const item = appData.splice(evt.oldIndex, 1)[0];
-                    appData.splice(evt.newIndex, 0, item);
+                    const item = appData.sections.splice(evt.oldIndex, 1)[0];
+                    appData.sections.splice(evt.newIndex, 0, item);
                     saveData();
                 }
             });
@@ -562,9 +734,8 @@
                         
                         if (fromCatIdx === toCatIdx && evt.oldIndex === evt.newIndex) return;
 
-                        // Calculate logic to skip the "Add Link" button in index count
-                        const item = appData[fromCatIdx].links.splice(evt.oldIndex, 1)[0];
-                        appData[toCatIdx].links.splice(evt.newIndex, 0, item);
+                        const item = appData.sections[fromCatIdx].links.splice(evt.oldIndex, 1)[0];
+                        appData.sections[toCatIdx].links.splice(evt.newIndex, 0, item);
                         
                         saveData();
                         renderApp();
@@ -601,6 +772,45 @@
             setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
         }
 
+        function exportConfig() {
+            const dataStr = JSON.stringify(appData, null, 2);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = 'dashboard-config.json';
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+            showToast("Configuration Exported");
+        }
+
+        function importConfig(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    // Basic validation
+                    if (importedData.sections || importedData.widgets) {
+                        appData = {
+                            sections: importedData.sections || appData.sections,
+                            widgets: importedData.widgets || appData.widgets
+                        };
+                        saveData();
+                        renderApp();
+                        showToast("Configuration Imported");
+                    } else {
+                        alert("Invalid configuration file.");
+                    }
+                } catch (err) {
+                    alert("Error parsing file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
 
         // --- Logic: CRUD ---
         function toggleEditMode() {
@@ -615,14 +825,14 @@
         function deleteCategory(idx) {
             if (!confirm("Delete this category? Links will be moved to 'Unsorted'.")) return;
             
-            const linksToSave = appData[idx].links;
-            appData.splice(idx, 1);
+            const linksToSave = appData.sections[idx].links;
+            appData.sections.splice(idx, 1);
             
             if (linksToSave.length > 0) {
-                let unsorted = appData.find(c => c.title === 'Unsorted');
+                let unsorted = appData.sections.find(c => c.title === 'Unsorted');
                 if (!unsorted) {
                     unsorted = { id: `cat-unsorted-${Date.now()}`, title: 'Unsorted', icon: '📂', links: [] };
-                    appData.push(unsorted);
+                    appData.sections.push(unsorted);
                 }
                 unsorted.links.push(...linksToSave);
             }
@@ -633,7 +843,7 @@
 
         function deleteLink(catIdx, linkIdx) {
             if(!confirm("Delete this link?")) return;
-            appData[catIdx].links.splice(linkIdx, 1);
+            appData.sections[catIdx].links.splice(linkIdx, 1);
             saveData();
             renderApp();
         }
@@ -652,7 +862,7 @@
                 document.getElementById('linkType').value = 'standard';
             } else {
                 title.innerText = "Edit Link";
-                const link = appData[catIdx].links[linkIdx];
+                const link = appData.sections[catIdx].links[linkIdx];
                 document.getElementById('linkName').value = link.name;
                 document.getElementById('linkUrl').value = link.url;
                 document.getElementById('linkIcon').value = link.icon;
@@ -677,16 +887,16 @@
             if (!name || !url) return alert("Name and URL required");
 
             const newLink = {
-                id: currentEditLinkIdx === -1 ? `l-${Date.now()}` : appData[currentEditCatIdx].links[currentEditLinkIdx].id,
+                id: currentEditLinkIdx === -1 ? `l-${Date.now()}` : appData.sections[currentEditCatIdx].links[currentEditLinkIdx].id,
                 name, url, icon, desc,
                 highlight: type === 'highlight',
                 type: type === 'training' ? 'training' : undefined
             };
 
             if (currentEditLinkIdx === -1) {
-                appData[currentEditCatIdx].links.push(newLink);
+                appData.sections[currentEditCatIdx].links.push(newLink);
             } else {
-                appData[currentEditCatIdx].links[currentEditLinkIdx] = newLink;
+                appData.sections[currentEditCatIdx].links[currentEditLinkIdx] = newLink;
             }
             
             saveData();
@@ -699,8 +909,8 @@
             currentEditCatIdx = idx;
             document.getElementById('catModal').style.display = 'flex';
             if (idx > -1) {
-                document.getElementById('catTitle').value = appData[idx].title;
-                document.getElementById('catIcon').value = appData[idx].icon;
+                document.getElementById('catTitle').value = appData.sections[idx].title;
+                document.getElementById('catIcon').value = appData.sections[idx].icon;
             } else {
                 document.getElementById('catTitle').value = '';
                 document.getElementById('catIcon').value = '';
@@ -714,10 +924,10 @@
             if (!title) return;
 
             if (currentEditCatIdx > -1) {
-                appData[currentEditCatIdx].title = title;
-                appData[currentEditCatIdx].icon = icon;
+                appData.sections[currentEditCatIdx].title = title;
+                appData.sections[currentEditCatIdx].icon = icon;
             } else {
-                appData.push({
+                appData.sections.push({
                     id: `cat-${Date.now()}`,
                     title: title,
                     icon: icon,
@@ -738,11 +948,61 @@
             localStorage.setItem('roza_app_data', JSON.stringify(appData));
         }
 
+        // --- Widget Specific Logic ---
+        let timerInterval;
+        let timeLeft = 25 * 60;
+        let timerRunning = false;
+
+        function toggleTimer(btn) {
+            if (timerRunning) {
+                clearInterval(timerInterval);
+                btn.innerText = 'Start';
+            } else {
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    updateTimerDisplay();
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        alert("Time's up!");
+                        resetTimer();
+                    }
+                }, 1000);
+                btn.innerText = 'Pause';
+            }
+            timerRunning = !timerRunning;
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timeLeft = 25 * 60;
+            timerRunning = false;
+            updateTimerDisplay();
+            const btn = document.querySelector('#timer-display + div button');
+            if (btn) btn.innerText = 'Start';
+        }
+
+        function updateTimerDisplay() {
+            const display = document.getElementById('timer-display');
+            if (!display) return;
+            const mins = Math.floor(timeLeft / 60);
+            const secs = timeLeft % 60;
+            display.innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function saveGoal() {
+            localStorage.setItem('roza_goal', document.getElementById('dailyGoal').value);
+        }
+
         // --- Existing Utils (Weather, Time, Notes) ---
         function updateTime() {
             const now = new Date();
             const options = { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' };
             document.getElementById('date-display').innerText = now.toLocaleDateString('en-US', options);
+
+            const widgetClock = document.getElementById('widget-clock');
+            if (widgetClock) {
+                widgetClock.innerText = now.toLocaleTimeString('en-US', { hour12: false });
+            }
         }
 
         async function fetchWeather() {
@@ -754,35 +1014,65 @@
         }
 
         // Task & Note Persistence
-        const taskList = document.getElementById('taskList');
-        const scratchpad = document.getElementById('scratchpad');
-
         function loadTasks() {
+            const list = document.getElementById('taskList');
+            const pad = document.getElementById('scratchpad');
             const saved = localStorage.getItem('roza_tasks');
-            if(saved) taskList.innerHTML = saved;
+            if(saved && list) list.innerHTML = saved;
             const notes = localStorage.getItem('roza_notes');
-            if(notes) scratchpad.value = notes;
+            if(notes && pad) pad.value = notes;
         }
 
-        function saveTasks() { localStorage.setItem('roza_tasks', taskList.innerHTML); }
-        function saveNotes() { localStorage.setItem('roza_notes', scratchpad.value); }
+        function saveTasks() {
+            const list = document.getElementById('taskList');
+            if (list) localStorage.setItem('roza_tasks', list.innerHTML);
+        }
+        function saveNotes() {
+            const pad = document.getElementById('scratchpad');
+            if (pad) localStorage.setItem('roza_notes', pad.value);
+        }
 
         function handleTaskKey(e) {
             if (e.key === 'Enter' && e.target.value.trim()) {
+                const list = document.getElementById('taskList');
+                let val = e.target.value;
+                let priority = '';
+                let time = '';
+
+                // Parse !1, !2, !3
+                const pMatch = val.match(/!([1-3])/);
+                if (pMatch) {
+                    priority = pMatch[1];
+                    val = val.replace(pMatch[0], '').trim();
+                }
+
+                // Parse @time
+                const tMatch = val.match(/@(\S+)/);
+                if (tMatch) {
+                    time = tMatch[1];
+                    val = val.replace(tMatch[0], '').trim();
+                }
+
                 const li = document.createElement('li');
-                li.className = 'task-item';
+                li.className = `task-item ${priority ? 'priority-' + priority : ''}`;
                 li.innerHTML = `
-                    <span class="task-text" onclick="toggleTask(this)">${e.target.value}</span>
+                    <div style="display:flex; flex-direction:column; flex-grow:1;">
+                        <div style="display:flex; align-items:center;">
+                            ${priority ? `<span class="priority-badge p${priority}">${priority}</span>` : ''}
+                            <span class="task-text" onclick="toggleTask(this)">${val}</span>
+                        </div>
+                        ${time ? `<span style="font-size:0.75rem; color:var(--accent); margin-top:4px; opacity:0.8;">🕒 ${time}</span>` : ''}
+                    </div>
                     <button class="delete-btn" onclick="removeTask(this)">×</button>
                 `;
-                taskList.prepend(li); // Add to top
+                if (list) list.prepend(li);
                 e.target.value = '';
                 saveTasks();
             }
         }
 
-        window.toggleTask = function(el) { el.parentElement.classList.toggle('task-done'); saveTasks(); }
-        window.removeTask = function(btn) { btn.parentElement.remove(); saveTasks(); }
+        window.toggleTask = function(el) { el.closest('.task-item').classList.toggle('task-done'); saveTasks(); }
+        window.removeTask = function(btn) { btn.closest('.task-item').remove(); saveTasks(); }
 
         // Start
         setInterval(updateTime, 1000);
